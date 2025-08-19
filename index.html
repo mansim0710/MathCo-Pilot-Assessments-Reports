@@ -41,23 +41,11 @@
             left: 20px;
             width: 100px;
             height: 50px;
-            background-image: url('https://images.squarespace-cdn.com/content/v1/5e6c7c4c8e5c8f6d4b8c7e4f/1610032896523-XQXQXQXQXQXQXQXQ/MathCo-Logo-White.png');
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTAwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8dGV4dCB4PSI1MCIgeT0iMzAiIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5NYXRoQ288L3RleHQ+Cjwvc3ZnPgo=');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
             z-index: 3;
-            /* Fallback with text if image doesn't load */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .mathco-logo::after {
-            content: 'MathCo';
-            display: block;
         }
 
         .enqurious-logo {
@@ -66,23 +54,11 @@
             right: 20px;
             width: 120px;
             height: 50px;
-            background-image: url('https://enqurious.com/assets/img/logo-white.png');
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTIwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8dGV4dCB4PSI2MCIgeT0iMzAiIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5lbnF1cmlvdXM8L3RleHQ+Cjwvc3ZnPgo=');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
             z-index: 3;
-            /* Fallback with text if image doesn't load */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .enqurious-logo::after {
-            content: 'enqurious';
-            display: block;
         }
 
         .header-content {
@@ -380,12 +356,19 @@
             <button type="button" id="generateReport" disabled>View Report</button>
             
             <div style="margin-top: 30px;">
-                <h3>Download Individual Reports</h3>
-                <button type="button" class="download-btn" id="downloadAllReports">Download All Reports</button>
-                <button type="button" class="download-btn" id="downloadDEReports">Download DE Reports</button>
-                <button type="button" class="download-btn" id="downloadDSReports">Download DS Reports</button>
+                <h3>Download Reports</h3>
+                <div style="margin-bottom: 15px;">
+                    <label for="formatSelect">Select Format:</label>
+                    <select id="formatSelect" style="margin-left: 10px; padding: 5px;">
+                        <option value="pdf">PDF Format</option>
+                        <option value="html">HTML Format</option>
+                    </select>
+                </div>
+                <button type="button" class="download-btn" id="downloadAllReports">Download All Reports (ZIP)</button>
+                <button type="button" class="download-btn" id="downloadDEReports">Download DE Reports (ZIP)</button>
+                <button type="button" class="download-btn" id="downloadDSReports">Download DS Reports (ZIP)</button>
                 <p style="margin-top: 10px; font-size: 14px; color: #666;">
-                    Note: Reports will download individually. For bulk downloads, consider using a download manager.
+                    Reports will be packaged in ZIP files. PDF format recommended for sharing.
                 </p>
             </div>
             
@@ -399,6 +382,8 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         console.log('Script starting...');
         
@@ -933,7 +918,7 @@
             console.log('Download setup complete');
         }
 
-        function downloadReports(participantList, type) {
+        async function downloadReports(participantList, type) {
             console.log('Download function called for:', type, 'Count:', participantList.length);
             
             if (!participantList || participantList.length === 0) {
@@ -941,7 +926,21 @@
                 return;
             }
             
-            if (!confirm(`This will download ${participantList.length} individual HTML files. Continue?`)) {
+            // Check if required libraries are loaded
+            if (!window.JSZip) {
+                alert('ZIP library not loaded. Please refresh the page and try again.');
+                return;
+            }
+            
+            if (!window.jsPDF && document.getElementById('formatSelect').value === 'pdf') {
+                alert('PDF library not loaded. Switching to HTML format.');
+                document.getElementById('formatSelect').value = 'html';
+            }
+            
+            const format = document.getElementById('formatSelect').value;
+            const formatText = format.toUpperCase();
+            
+            if (!confirm(`This will create a ZIP file with ${participantList.length} ${formatText} reports. Continue?`)) {
                 return;
             }
             
@@ -955,77 +954,187 @@
                 button = document.getElementById('downloadDSReports');
             }
             
-            console.log('Button found:', !!button, 'Type:', type);
-            
-            if (button) {
-                const originalText = button.textContent;
-                button.disabled = true;
-                button.textContent = `Preparing ${type} Downloads...`;
-                
-                let downloadCount = 0;
-                
-                // Download each report with delay
-                participantList.forEach((participant, index) => {
-                    setTimeout(() => {
-                        try {
-                            console.log(`Processing ${index + 1}/${participantList.length}: ${participant.name}`);
-                            
-                            const reportHtml = generateReportHTML(participant);
-                            const filename = `${participant.name.replace(/\s+/g, '_')}_${participant.type}_MathCo_Report.html`;
-                            
-                            // Force download
-                            downloadFile(reportHtml, filename);
-                            
-                            downloadCount++;
-                            button.textContent = `Downloaded ${downloadCount}/${participantList.length}`;
-                            
-                            // Reset when complete
-                            if (downloadCount === participantList.length) {
-                                setTimeout(() => {
-                                    button.textContent = originalText;
-                                    button.disabled = false;
-                                    alert(`Successfully downloaded ${downloadCount} ${type} reports!`);
-                                }, 1000);
-                            }
-                            
-                        } catch (error) {
-                            console.error('Error downloading:', participant.name, error);
-                        }
-                    }, index * 500); // Faster downloads - 500ms delay
-                });
-            } else {
-                console.error('Button not found for type:', type);
+            if (!button) {
                 alert('Download button not found. Please try again.');
+                return;
+            }
+            
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = `Creating ${type} ${formatText} ZIP...`;
+            
+            try {
+                const zip = new JSZip();
+                let processedCount = 0;
+                
+                // Process each participant
+                for (let i = 0; i < participantList.length; i++) {
+                    const participant = participantList[i];
+                    
+                    try {
+                        let filename, content;
+                        
+                        if (format === 'pdf') {
+                            const pdfResult = await generatePDFReport(participant);
+                            filename = `${participant.name.replace(/\s+/g, '_')}_${participant.type}_MathCo_Report.pdf`;
+                            content = pdfResult;
+                        } else {
+                            const htmlContent = generateReportHTML(participant);
+                            filename = `${participant.name.replace(/\s+/g, '_')}_${participant.type}_MathCo_Report.html`;
+                            content = htmlContent;
+                        }
+                        
+                        zip.file(filename, content);
+                        processedCount++;
+                        
+                        // Update progress
+                        button.textContent = `Processing ${processedCount}/${participantList.length}...`;
+                        
+                        // Small delay to prevent browser freezing
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                        
+                    } catch (error) {
+                        console.error('Error processing participant:', participant.name, error);
+                    }
+                }
+                
+                // Generate and download ZIP
+                button.textContent = 'Generating ZIP file...';
+                const zipBlob = await zip.generateAsync({
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: {
+                        level: 6
+                    }
+                });
+                
+                // Download the ZIP file
+                const zipFilename = `MathCo_${type}_Assessment_Reports_${formatText}.zip`;
+                downloadFile(zipBlob, zipFilename);
+                
+                // Reset button
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                alert(`Successfully created ZIP file with ${processedCount} ${formatText} reports!`);
+                
+            } catch (error) {
+                console.error('Error creating ZIP:', error);
+                alert('Error creating ZIP file. Please try again.');
+                button.textContent = originalText;
+                button.disabled = false;
             }
         }
 
-        function downloadFile(content, filename) {
-            try {
-                // Create blob
-                const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-                
-                // Create download link
-                const link = document.createElement('a');
-                const url = URL.createObjectURL(blob);
-                
-                link.href = url;
-                link.download = filename;
-                link.style.display = 'none';
-                
-                // Trigger download
-                document.body.appendChild(link);
-                link.click();
-                
-                // Cleanup
-                document.body.removeChild(link);
-                setTimeout(() => URL.revokeObjectURL(url), 100);
-                
-                console.log('Downloaded:', filename);
-                return true;
-            } catch (error) {
-                console.error('Download failed:', filename, error);
-                return false;
+        async function generatePDFReport(participant) {
+            if (!window.jsPDF) {
+                throw new Error('PDF library not loaded');
             }
+            
+            const { jsPDF } = window.jsPDF;
+            const doc = new jsPDF();
+            
+            // Set up PDF
+            let yPosition = 20;
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 20;
+            const contentWidth = pageWidth - (margin * 2);
+            
+            // Header
+            doc.setFillColor(30, 60, 114);
+            doc.rect(0, 0, pageWidth, 40, 'F');
+            
+            // Logos (text)
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('MathCo', 20, 15);
+            doc.text('enqurious', pageWidth - 40, 15);
+            
+            // Title
+            doc.setFontSize(16);
+            doc.text('Project Pilot Assessment Report', pageWidth / 2, 25, { align: 'center' });
+            
+            yPosition = 50;
+            
+            // Participant Info
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.text(participant.name, pageWidth / 2, yPosition, { align: 'center' });
+            
+            yPosition += 10;
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${participant.type === 'DE' ? 'Data Engineer' : 'Data Scientist'}`, pageWidth / 2, yPosition, { align: 'center' });
+            
+            yPosition += 10;
+            doc.text(participant.email, pageWidth / 2, yPosition, { align: 'center' });
+            
+            yPosition += 20;
+            
+            // Contact Information
+            doc.setFont('helvetica', 'bold');
+            doc.text('Contact Information', margin, yPosition);
+            yPosition += 10;
+            
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Email: ${participant.email}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Role Track: ${participant.type === 'DE' ? 'Data Engineering' : 'Data Science'}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Assessment ID: ${participant.accessCode}`, margin, yPosition);
+            yPosition += 15;
+            
+            // Skills Assessment
+            doc.setFont('helvetica', 'bold');
+            doc.text('MACH Skills Assessment', margin, yPosition);
+            yPosition += 10;
+            
+            doc.setFont('helvetica', 'normal');
+            Object.entries(participant.skills).forEach(([skill, level]) => {
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                doc.text(`${skill}: ${level}`, margin, yPosition);
+                yPosition += 7;
+            });
+            
+            yPosition += 10;
+            
+            // Role Readiness
+            if (yPosition > 240) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Role Readiness Assessment', margin, yPosition);
+            yPosition += 10;
+            
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Status: ${participant.roleReadiness}`, margin, yPosition);
+            yPosition += 15;
+            
+            // Assessment Summary
+            if (yPosition > 230) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Assessment Summary', margin, yPosition);
+            yPosition += 10;
+            
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Report Generated: ${new Date().toLocaleDateString()}`, margin, yPosition);
+            yPosition += 7;
+            doc.text('Organization: MathCo', margin, yPosition);
+            yPosition += 7;
+            doc.text('Assessment Type: Project Pilot MACH Proficiency Evaluation', margin, yPosition);
+            
+            return doc.output('blob');
         }
 
         function generateReport(participant) {
